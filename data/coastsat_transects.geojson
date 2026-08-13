@@ -1,0 +1,23 @@
+{
+"type": "FeatureCollection",
+"name": "coastsat_transects",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::32610" } },
+"features": [
+{"type":"Feature","properties":{"name":"T00"},"geometry":{"type":"LineString","coordinates":[[542615.379620948224328,4159249.779104302637279],[542165.381142752128653,4159250.949412470217794]]}},
+{"type":"Feature","properties":{"name":"T01"},"geometry":{"type":"LineString","coordinates":[[542612.993057081010193,4159346.321681652218103],[542162.994578884914517,4159347.491989819798619]]}},
+{"type":"Feature","properties":{"name":"T02"},"geometry":{"type":"LineString","coordinates":[[542616.375240580411628,4159444.44653305830434],[542166.376762384315953,4159445.616841225884855]]}},
+{"type":"Feature","properties":{"name":"T03"},"geometry":{"type":"LineString","coordinates":[[542645.687844205531292,4159532.04507268499583],[542195.689366009435616,4159533.215380852576345]]}},
+{"type":"Feature","properties":{"name":"T04"},"geometry":{"type":"LineString","coordinates":[[542714.439861811348237,4159600.927440004423261],[542264.441383615252562,4159602.097748172003776]]}},
+{"type":"Feature","properties":{"name":"T05"},"geometry":{"type":"LineString","coordinates":[[542711.613503003609367,4159700.475221422500908],[542261.615024807513691,4159701.645529590081424]]}},
+{"type":"Feature","properties":{"name":"T06"},"geometry":{"type":"LineString","coordinates":[[542670.673849752405658,4159791.055303435306996],[542220.675371556309983,4159792.225611602887511]]}},
+{"type":"Feature","properties":{"name":"T07"},"geometry":{"type":"LineString","coordinates":[[542668.09192151366733,4159889.57369199488312],[542218.093443317571655,4159890.744000162463635]]}},
+{"type":"Feature","properties":{"name":"T08"},"geometry":{"type":"LineString","coordinates":[[542698.71424301341176,4159984.141886375844479],[542248.715764817316085,4159985.312194543424994]]}},
+{"type":"Feature","properties":{"name":"T09"},"geometry":{"type":"LineString","coordinates":[[542704.715760558610782,4160082.765298774000257],[542254.717282362515107,4160083.935606941580772]]}},
+{"type":"Feature","properties":{"name":"T10"},"geometry":{"type":"LineString","coordinates":[[542685.341922917752527,4160180.712763461750001],[542235.343444721656851,4160181.883071629330516]]}},
+{"type":"Feature","properties":{"name":"T11"},"geometry":{"type":"LineString","coordinates":[[542682.524288351647556,4160280.516896439250559],[542232.525810155551881,4160281.687204606831074]]}},
+{"type":"Feature","properties":{"name":"T12"},"geometry":{"type":"LineString","coordinates":[[542687.010512872948311,4160379.438008310738951],[542237.012034676852636,4160380.608316478319466]]}},
+{"type":"Feature","properties":{"name":"T13"},"geometry":{"type":"LineString","coordinates":[[542683.302338653476909,4160479.168300410266966],[542233.303860457381234,4160480.338608577847481]]}},
+{"type":"Feature","properties":{"name":"T14"},"geometry":{"type":"LineString","coordinates":[[542655.251282355864532,4160572.44795839022845],[542205.252804159768857,4160573.618266557808965]]}},
+{"type":"Feature","properties":{"name":"T15"},"geometry":{"type":"LineString","coordinates":[[542583.228336936444975,4160635.089518419932574],[542133.2298587403493,4160636.259826587513089]]}}
+]
+}

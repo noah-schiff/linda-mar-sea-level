@@ -462,16 +462,129 @@ validation batch, run on the complete historical record:
   shorelines" step (unlike the download step, which does print a running
   %) — don't mistake this for a hang; let it run.
 
+### Transects and the final trend (done)
+
+- `scripts/coastsat/define_transects.py` — derives shore-normal transects
+  programmatically (not CoastSat's normal interactive click-tool) from the
+  same MHHW DEM contour used for the reference shoreline. Isolates the
+  sandy-beach contour piece specifically (same highest-in-ROI-fraction
+  selection logic as `build_reference_shoreline.py`), then places transects
+  every 100 m along it, saving `data/coastsat_transects.geojson` (16
+  transects) and `output/coastsat_transects_map.png` for visual QA.
+  - **Gotcha, and the fix**: a per-transect local tangent (finite
+    difference over a small window, even after Gaussian-smoothing the DEM
+    the same way `plot_elevation_map.py` does) was too sensitive to
+    meter-scale wiggle in the traced beach edge — individual transects
+    ended up rotated tens of degrees apart and crossing each other instead
+    of fanning out cleanly, visually obvious in the QA plot. Fixed by
+    recognizing Linda Mar Beach is close to a straight line over the
+    transect-placement range (confirmed via PCA: long-axis/short-axis
+    ratio ~11:1) and fitting **one global shore-normal direction** for the
+    whole beach, reused for every transect — only the alongshore origin
+    differs per transect. This is standard practice for a fairly straight
+    beach and matches how CoastSat's own examples look when a person draws
+    transects by eye.
+  - Seaward direction (which of the two normal directions to use) is
+    picked automatically, not assumed from geometry: sample DEM elevation
+    30 m to each side of the beach midpoint and take whichever side is
+    lower (open coast here has no missing/NaN elevation data — the DEM's
+    minimum is ~-17 m, clearly water/nearshore seafloor).
+  - Each transect: origin 50 m landward of the MHHW point, extending 450 m
+    seaward — generous enough to hold the full historical range of
+    detected shoreline positions (including low-tide passes) without
+    clipping.
+- `scripts/coastsat/compute_transect_timeseries.py` — loads the raw
+  CoastSat output already saved by `extract_shorelines.py`
+  (`coastsat_data/LINDAMAR/LINDAMAR_output.pkl`, not re-extracted), applies
+  the same cleanup already used for the shoreline geojson (duplicate/
+  inaccurate-georef removal, then `filter_points_near_reference` — reused
+  directly from `extract_shorelines.py`, not reimplemented), then uses
+  CoastSat's `SDS_transects.compute_intersection_QC` (same QC settings as
+  CoastSat's own `example.py`: `along_dist=25`, `min_points=3`,
+  `max_std=15`, `max_range=30`, `min_chainage=-100`, `multiple_inter='auto'`)
+  to measure cross-shore distance along each transect for every image date.
+  Saves `data/coastsat_transect_timeseries.csv` (small, tracked in git).
+- `scripts/plot_transect_trend.py` — runs in the project's regular `.venv`
+  (like `plot_shoreline_validation.py`, needs no geopandas since it reads
+  the transects geojson with plain `json`). Fits a linear trend per
+  transect and one overall alongshore-mean trend, and plots both: a map of
+  transects colored by trend (red=retreating, green=advancing) next to the
+  alongshore-mean cross-shore-distance time series with its trend line.
+  Saves `output/coastsat_transect_trend.png`.
+
+**Result**: 15 of 16 transects show a positive (seaward/accreting) trend,
+one is flat; the alongshore-mean trend is **+0.131 m/yr, p=0.001** (linear
+regression, n=958 dates, 1984–2026) — Linda Mar Beach has been slightly
+**advancing**, not retreating, over the full CoastSat record. Note the
+scale: individual detections scatter roughly ±50 m around the mean (visible
+in `coastsat_transect_trend.png`) — mostly seasonal/storm beach-width
+cycling and uncorrected tidal noise (see below), dwarfing the ~0.13 m/yr
+trend itself. The trend is statistically significant but the *practical*
+takeaway is "no evidence of erosion," not "measurable steady accretion" —
+consistent with Linda Mar being a sediment-fed pocket beach (San Pedro
+Creek outlet) rather than one of the more erosion-prone open stretches of
+Pacifica.
+
+## Summary figure (all three phases)
+
+`scripts/plot_summary.py` (project `.venv`) combines all three phases into
+`output/linda_mar_summary.png`: a stat row with the three headline numbers,
+then ① the Phase 1 sea level record, ② the Phase 3 shoreline position, and
+③ the Phase 2 projected flood extent. All three numbers are recomputed from
+the source data at render time (never hardcoded), so the figure can't drift
+out of sync with the phase results.
+
+Design decisions worth keeping (per the `dataviz` skill):
+
+- **Panel order follows the argument, not the phase numbering.** The two
+  *observed* histories stack on the left (sea level rising, beach holding)
+  and the *projection* they lead to takes the tall right-hand panel — so
+  reading order and narrative order match. An earlier draft had the map on
+  the left as ②, which made the eye jump ②→①→③.
+- **Shared visual grammar across both time-series panels**, so the reader
+  learns it once: muted gray = raw noisy observations, blue (categorical
+  slot 1) = the smoothed signal (12-month rolling average / annual median),
+  orange (slot 2) = the fitted linear trend.
+- **Flood extent is drawn as filled nested zones, not contour lines.** The
+  first draft reused Phase 2's contour-lines-over-a-purple/gold-diverging-
+  basemap approach, and at summary-figure size the three lines were nearly
+  coincident and essentially unreadable. Flood extent is an *area*, so it
+  gets area fills; the terrain underneath drops to a recessive light-gray
+  ramp so the only loud thing on the map is the water. The Phase 2
+  deliverable keeps its LSU purple/gold scale — there the color *is* the
+  data (elevation itself), which is a different job.
+- **The flood zones use a one-hue ordinal blue ramp** (darkest = already wet
+  today, lightest = only under High-2100), because the thresholds are
+  genuinely ordered — not three arbitrary categorical hues as in the
+  Phase 2 map.
+- **Palettes were validated, not eyeballed** — `scripts/validate_palette.py`
+  (run it: `.\.venv\Scripts\python.exe scripts\validate_palette.py`). Node
+  isn't installed on this machine, so the `dataviz` skill's
+  `validate_palette.js` checks were ported to Python; the port self-tests
+  against the reference values documented in the skill's own `palette.md`
+  (adjacent CVD ΔE 9.1 / normal-vision 19.6 for the shipped 8-slot order)
+  and aborts if it ever stops reproducing them, so a silently-drifted port
+  can't quietly bless a bad palette. Results: the blue/orange series pair
+  passes every categorical check (CVD ΔE 24.7, normal-vision 33.6, both
+  ≥ 3:1 contrast); the blue flood ramp passes the ordinal checks (monotone
+  lightness, step gaps ≥ 0.06, light end 2.06:1, hue spread 3°).
+  Note the ordinal ramp must be checked with the *ordinal* checks — a
+  correct one-hue ramp fails the categorical lightness-band and chroma
+  gates by design, since it's built to span lightness and go pale at one end.
+- **Shoreline panel y-axis is capped at ±50 m**, which excludes 5 of 958
+  passes — stated on the panel itself rather than silently dropped, since
+  letting those outliers set the scale flattened the signal.
+- **Stat tile ③ is labeled "vs. 2000 baseline", not "above today's MHHW"** —
+  the NOAA scenario values are relative to a year-2000 baseline (see Phase 2
+  above), and the map legend carries the unambiguous absolute NAVD88
+  elevations that rise implies.
+
 ### Not yet decided
 
-- Transects (for turning shorelines into a single cross-shore
-  distance-over-time trend) — not yet defined, needed before Phase 3 can
-  produce the final "advancing or retreating" answer. This is the next
-  step: `data/coastsat_shorelines.geojson` (1,051 shorelines, 1984-2026)
-  is ready to use for it.
 - Whether to reuse a folium/leafmap-based interactive view (the original
   Phase 3 idea, before this session's shoreline-change scope) as a later
   way to explore the shoreline results, or keep it script/notebook-based.
-- Tidal correction still intentionally skipped (see above) — matters more
-  once transects turn this into a quantitative trend, less so for the
-  purely visual validation done so far.
+- Tidal correction (`pyfes` + FES2022, still intentionally skipped — see
+  above) would tighten the scatter in the time series and could sharpen
+  the trend estimate, but is unlikely to reverse its sign given how
+  consistent the direction is across 15/16 independent transects.
