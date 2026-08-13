@@ -6,6 +6,7 @@ reference record.
 
 ![San Francisco sea level trend](output/sf_sea_level_trend.png)
 ![Linda Mar Beach elevation map](output/linda_mar_elevation_map.png)
+![CoastSat extracted shorelines](output/coastsat_shoreline_validation.png)
 
 ## Setup
 
@@ -42,5 +43,7 @@ high tide to reach by 2050 and 2100.
   [CoastSat](https://github.com/kvos/CoastSat) (satellite-derived
   shoreline positions via Google Earth Engine). Needs a separate conda
   environment (`coastsat`, Python 3.11) — see `CLAUDE.md` for setup.
+  1,051 shorelines extracted from 1984–2026 (Landsat 5/7/8/9 + Sentinel-2);
+  next step is turning that into a single cross-shore trend via transects.
 
 See `CLAUDE.md` for full project details.

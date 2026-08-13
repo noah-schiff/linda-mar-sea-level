@@ -10,3 +10,6 @@ Thumbs.db
 # something to version control.
 external/
 coastsat_data/
+
+# Local assistant/session state, not project code.
+.claude/

@@ -248,18 +248,75 @@ merged in.
   code, and it's multi-hundred-MB with its own git history, both bad fits
   for our repo. Re-clone any time; nothing local is customized in it.
 
-### Still needed before it runs (blocked on the user)
+### Running CoastSat scripts: two hard rules
 
-CoastSat authenticates to Google Earth Engine as the user, not as this
-session, so these steps need to be done by the user directly, the same
-pattern as the earlier `gh auth login` step:
+1. **Always `conda activate coastsat` first**, in a normal (non-sandboxed)
+   terminal window. Don't call `envs\coastsat\python.exe` by full path
+   without activating — GDAL's DLLs live in that env's `Library\bin`, and
+   only proper activation reliably puts that on PATH (see GDAL gotcha
+   above; this was traced back to `conda init powershell` never having
+   been run — fixed once, via `condabin\conda.bat init powershell`, but
+   worth restating the rule since calling the interpreter by full path is
+   an easy habit to fall back into and silently breaks GDAL again).
+2. **Any interactive/credential-prompting command (browser logins, OAuth,
+   anything that opens a browser or waits on a local network callback)
+   must be run by the user directly, in their own terminal — not through
+   the assistant's own tool calls, and not proxied through `!` if it can
+   be avoided either.** Root-caused during GEE setup (see below): the
+   assistant's own shell tool runs in a network-sandboxed context, so a
+   local OAuth callback server bound inside it (`localhost:8085`) is not
+   reachable by the browser on the user's real desktop — the browser
+   completes Google's consent screen fine, but the final redirect has
+   nowhere real to land, and the process hangs forever waiting for a
+   callback that can't arrive. Running the identical script in the user's
+   own terminal works immediately, because the local server and the
+   browser are then in the same real network namespace.
 
-1. Free GEE account at https://signup.earthengine.google.com/
-2. Install Google Cloud CLI, then `gcloud init` and `gcloud auth
-   application-default login` to link a (free, non-commercial-tier) Google
-   Cloud project.
-3. Note the project ID (`gcloud config get-value project`) — passed into
-   CoastSat's `SDS_download.authenticate_and_initialize(project_name)`.
+### Google Earth Engine authentication — how it was actually resolved
+
+This took multiple failed attempts and is worth recording in detail so it
+isn't re-debugged from scratch:
+
+- Account: free GEE signup at https://signup.earthengine.google.com/,
+  registered to Google Cloud project `linda-mar-coastsat`.
+- `gcloud` CLI installed (`winget install --id Google.CloudSDK`), then
+  user ran `gcloud init` themselves (needs their own login).
+- **`Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`
+  was required** before `gcloud init` would run at all — Windows blocks
+  gcloud's PowerShell wrapper scripts by default.
+- **`ee.Authenticate(auth_mode='gcloud')` (and plain `ee.Authenticate()`
+  with no arguments, which auto-selects `'gcloud'` mode whenever gcloud is
+  installed — see `ee/oauth.py`'s `authenticate()`) both fail with "This
+  app is blocked."** Root cause, confirmed by reading `ee/oauth.py`
+  directly: both delegate to `gcloud auth application-default login`
+  using gcloud's own shared/generic OAuth client (the same client ID
+  every `gcloud auth application-default login` on every machine uses,
+  `764086051850-...`), and Google has restricted that specific shared
+  client from being granted the Drive scope `ee.Authenticate()` requests
+  by default (the tool even prints a warning about this beforehand: "The
+  following scopes will be blocked soon for the default client ID").
+  This is **not** fixable via the OAuth consent screen's test-user list —
+  the user doesn't own or control that client, Google does. Verified this
+  wasn't a project-registration or API-enablement problem first, by
+  calling the Earth Engine REST API directly with a plain `gcloud
+  auth print-access-token` token and confirming it got past
+  authentication into normal request handling.
+- **Fix**: force `ee.Authenticate(auth_mode='localhost')` explicitly. This
+  skips the gcloud-delegation branch entirely and uses Earth Engine's own
+  dedicated, already Google-verified OAuth client (a distinct `CLIENT_ID`
+  constant in `ee/oauth.py`, `517222506229-...`) via a short-lived local
+  webserver on `localhost:8085`. This is the version now in
+  `scripts/coastsat/authenticate_gee.py`.
+- Combined with hard rule #2 above (must run in the user's own terminal),
+  this succeeded: `Earth Engine authenticated and initialized for project:
+  linda-mar-coastsat`, credentials cached at
+  `~/.config/earthengine/credentials`.
+- **This was one-time setup.** Now that a valid token is cached, ordinary
+  future scripts should just call
+  `SDS_download.authenticate_and_initialize('linda-mar-coastsat')` (which
+  tries the existing token first) or plain
+  `ee.Initialize(project='linda-mar-coastsat')` — no browser step, no
+  terminal-vs-`!` distinction, unless the token expires or is revoked.
 
 ### Tidal correction: intentionally skipped for the first pass
 
@@ -283,13 +340,138 @@ small-magnitude results.
 ### Data locations
 
 - `external/CoastSat/` — the toolkit itself (gitignored, vendored)
-- `coastsat_data/` — downloaded satellite imagery and extracted-shoreline
-  outputs land here (gitignored — this is easily 100s of MB to GBs, and
-  fully reproducible by re-running the download, so not committed)
+- `coastsat_data/` — downloaded satellite imagery and CoastSat's native
+  `.pkl` output land here (gitignored — this is easily 100s of MB to GBs,
+  and fully reproducible by re-running the download, so not committed)
+- `data/coastsat_shorelines.geojson` — small, tracked in git: just the
+  extracted shoreline geometries + dates (no imagery), written by
+  `scripts/coastsat/extract_shorelines.py`
+- `data/coastsat_reference_shoreline.npy` — reference coastline built from
+  the Phase 2 DEM (see below), tracked in git (small, ~100KB)
+
+### Region of interest and first validation batch (done)
+
+- ROI: a tight rectangle in WGS84 lon/lat around the sandy beach and surf
+  zone (`scripts/coastsat/download_imagery.py`'s `polygon`), lon -122.5205
+  to -122.5025, lat 37.5785 to 37.6015 — spans the full ~2.5 km of coast
+  from the beach itself up through the rockier point immediately north of
+  it (turns out this ROI extends further north than just the sand beach —
+  relevant below).
+- First batch pulled: Sentinel-2 only, 2023-01-01 to 2025-01-01 (129
+  images, ~2 years) — a deliberately small/fast validation run before
+  committing to the full historical pull. All images landed in
+  `coastsat_data/LINDAMAR/S2/`.
+- `scripts/coastsat/extract_shorelines.py` runs CoastSat's automated
+  (non-interactive) shoreline detection on downloaded imagery — reads
+  `metadata` via `SDS_download.get_metadata(inputs)`, does not
+  re-download anything.
+  - **Gotcha**: `SDS_shoreline.py` locates its ML classifier models via
+    `os.path.join(os.getcwd(), 'classification', 'models')` — i.e. it
+    assumes CoastSat's own repo directory is the current working
+    directory, not a path relative to the `coastsat` package. Our script
+    calls `os.chdir(COASTSAT_DIR)` right after imports to handle this
+    (our own file outputs all use absolute paths, so this is safe).
+- 56/129 images produced a shoreline (the rest filtered by cloud
+  cover/quality — normal for coastal Northern California's frequent fog).
+
+### Reference shoreline — built from the Phase 2 DEM, not hand-digitized
+
+CoastSat's normal way to reject spurious detections is a hand-digitized
+`reference_shoreline` (an interactive click tool) that constrains
+detection to a buffer (`max_dist_ref`, meters) around a known coastline.
+Instead, `scripts/coastsat/build_reference_shoreline.py` derives one
+programmatically from `data/linda_mar_dem.tif`: extracts the MHHW
+elevation contour (same 1.798 m NAVD88 reference as all of Phase 2) with
+`skimage.measure.find_contours`, and saves it as
+`data/coastsat_reference_shoreline.npy` for `extract_shorelines.py` to
+load into `settings['reference_shoreline']` (`max_dist_ref = 100`).
+
+**Gotcha**: the coastline splits into multiple *disconnected* contour
+pieces at this elevation (6 pieces total; the sandy beach and the rockier
+point north of it are two separate pieces, not one continuous line) — an
+earlier version of the script picked only the single contour with the
+most points inside the ROI, which kept the rocky-point piece (2585
+points, 56% in-ROI) but silently dropped the *separate* beach piece (1272
+points, 97% in-ROI!) since it had fewer total points. Fixed by combining
+every contour piece with meaningful ROI overlap (`>20` points or `>30%`
+inside the ROI bbox), not just the single best one.
+
+### Validating the extraction — and a second, sneakier geometry bug
+
+First unconstrained run (no reference shoreline) produced 56 shorelines
+that mostly traced the real coast well, but with obvious spurious
+diagonal lines cutting straight across the ROI and messy squiggles
+through the inland marsh/neighborhood — likely fog/cloud-contaminated
+Sentinel-2 passes producing false whole-image splits. Plotted with
+`scripts/plot_shoreline_validation.py` (runs in the project's `.venv`,
+not the `coastsat` env — reads the GeoJSON with plain `json`, no
+geopandas needed, just to overlay on the Phase 2 elevation basemap).
+
+Adding the reference shoreline (`max_dist_ref=100m`) fixed most of it, but
+a few diagonal spikes remained. A per-*point* distance filter
+(`filter_points_near_reference`, tighter 50 m threshold, in
+`extract_shorelines.py`) dropped 1279 stray points but **did not remove
+the remaining diagonal spikes at all** — because both endpoints of each
+spike were individually near real coastline (one end near the south beach,
+one end near the north point), just not near *each other*. The actual bug:
+`SDS_tools.output_to_gdf(output, 'lines')` builds one `LineString` per
+date by connecting *every point in array order* with no gap check —
+CoastSat's contour tracer can return several genuinely disconnected
+coastline pieces for one image, concatenated into a single array, and
+naively connecting them draws a spurious straight "connector" segment
+between two otherwise-valid detections. Fixed with our own
+`output_to_gdf_split_on_gaps()` in `extract_shorelines.py`, which splits
+each date's points into separate `LineString`s (emitted as a
+`MultiLineString`) wherever the gap between consecutive points exceeds
+50 m — real traced contour points are normally a few meters apart at
+most, so a multi-hundred-meter jump is unambiguously an artifact, not a
+real traced edge.
+
+**Net effect of both fixes**: `output/coastsat_shoreline_validation.png`
+went from a mix of good coastal traces + spurious diagonal streaks +
+inland marsh noise, to all 56 shorelines tracing tightly and continuously
+along the real coastline with no artifacts. This 3-piece pipeline
+(reference-shoreline-constrained extraction → per-point distance filter →
+gap-split geometry) is now the standard path in `extract_shorelines.py`.
+
+### Full historical pull (done)
+
+Validated pipeline confirmed to generalize correctly beyond the Sentinel-2
+validation batch, run on the complete historical record:
+
+- `download_imagery.py` extended from the 2-year/S2-only validation batch
+  to `dates = ['1984-01-01', '2026-08-13']`, `sat_list = ['L5','L7','L8',
+  'L9','S2']` — same `sitename`, so `retrieve_images()` skipped the 129
+  already-downloaded S2 validation images rather than re-fetching them.
+- 2,736 images downloaded (637 L5, 813 L7, 449 L8, 127 L9, 710 S2 total)
+  — **1.23 GB on disk**, all in gitignored `coastsat_data/`. Took roughly
+  1.5–2 hours.
+  - Storage estimate method (in case a similar sizing question comes up
+    for a different ROI/date range): ~0.58 MB/image for Sentinel-2,
+    ~0.47 MB/image for Landsat (all 4 Landsat missions treated at the same
+    15 m pixel size by CoastSat, per `SDS_shoreline.py`) — measured from
+    actual downloaded files, not a generic guess.
+- Final `extract_shorelines.py` run (same reference-shoreline +
+  point-filter + gap-split pipeline as the validation batch, no code
+  changes needed) on the complete set: **1,051 clean shorelines**, 1984-05-02
+  to 2026-08-03, across all 5 satellites — visually confirmed clean (no
+  diagonal-spike or marsh-noise artifacts) in
+  `output/coastsat_shoreline_validation.png`.
+- Runtime note: extraction over the full ~2,700 images took several
+  minutes with no visible per-image progress output during the "Mapping
+  shorelines" step (unlike the download step, which does print a running
+  %) — don't mistake this for a hang; let it run.
 
 ### Not yet decided
 
-- Exact region-of-interest polygon and transects for Linda Mar Beach.
+- Transects (for turning shorelines into a single cross-shore
+  distance-over-time trend) — not yet defined, needed before Phase 3 can
+  produce the final "advancing or retreating" answer. This is the next
+  step: `data/coastsat_shorelines.geojson` (1,051 shorelines, 1984-2026)
+  is ready to use for it.
 - Whether to reuse a folium/leafmap-based interactive view (the original
   Phase 3 idea, before this session's shoreline-change scope) as a later
   way to explore the shoreline results, or keep it script/notebook-based.
+- Tidal correction still intentionally skipped (see above) — matters more
+  once transects turn this into a quantitative trend, less so for the
+  purely visual validation done so far.
