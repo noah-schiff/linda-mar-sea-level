@@ -1,0 +1,17 @@
+{
+  "crs": "EPSG:32610",
+  "x_min": 542383.19186871,
+  "y_min": 4159103.194258938,
+  "x_max": 544836.3572645512,
+  "y_max": 4162666.4515539072,
+  "cols": 1227,
+  "rows": 1782,
+  "resolution_m": 2.0,
+  "lon_min": -122.52,
+  "lon_max": -122.492,
+  "lat_min": 37.578,
+  "lat_max": 37.61,
+  "vertical_datum": "NAVD88",
+  "vertical_units": "meters",
+  "source": "USGS 3DEP seamless DEM mosaic (elevation.nationalmap.gov)"
+}
