@@ -193,12 +193,103 @@ realistic/higher estimate:
 - A rigorous quantitative comparison against CoSMoS/OCOF flood extents is
   still open (see above).
 
-## Phase 3 — Interactive map / dashboard (not started)
+## Phase 3 — Shoreline change at Linda Mar (in progress)
 
-Build an interactive map or dashboard so scenarios from Phase 2 can be
-explored (e.g. a slider over sea-level-rise amount or year, toggling
-inundation overlays on a base map of Linda Mar Beach).
+Goal: find out whether Linda Mar Beach itself has been advancing or
+retreating over the past few decades, using **CoastSat**
+(https://github.com/kvos/CoastSat, Vos et al. 2019), an open-source tool
+that extracts shoreline position from 40+ years of public Landsat/Sentinel-2
+satellite imagery via Google Earth Engine (GEE), then measures cross-shore
+distance along user-defined transects over time — the same kind of
+trend-over-time analysis as Phase 1, but for beach width instead of sea
+level.
 
-Tooling not yet decided — candidates include `folium`/`leafmap` for a
-Python-generated interactive map, or a small web app if more interactivity
-is needed.
+### Environment (separate from the project's `.venv`)
+
+CoastSat needs GDAL, which is unreliable to install via plain `pip` on
+Windows (the same issue we avoided in Phase 2 by using `tifffile` instead
+of `rasterio`). Its own instructions use conda/mamba instead, pinned to
+**Python 3.11** — a different toolchain from this project's `.venv`
+(Python 3.14), so it lives in its own conda environment rather than being
+merged in.
+
+- Installed **Miniforge** (conda/mamba) via `winget install --id
+  CondaForge.Miniforge3`. Installed to `C:\Users\schif\Miniforge3`; **not**
+  added to system PATH by the installer, and a fresh PowerShell process
+  doesn't inherit PATH changes made by an earlier one anyway — so every
+  command needs either the full path to the executable, or to prepend PATH
+  manually first:
+  ```powershell
+  $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')
+  ```
+- Created a `coastsat` conda environment (Python 3.11):
+  ```
+  C:\Users\schif\Miniforge3\condabin\mamba.bat create -n coastsat python=3.11 geopandas gdal -y
+  C:\Users\schif\Miniforge3\condabin\mamba.bat install -n coastsat earthengine-api scikit-image matplotlib astropy notebook pyyaml -y
+  C:\Users\schif\Miniforge3\envs\coastsat\python.exe -m pip install pyqt5 imageio-ffmpeg
+  ```
+- **Gotcha**: importing `osgeo.gdal` fails with `DLL load failed... The
+  specified procedure could not be found` unless the environment's
+  `Library\bin` folder is on PATH (this is what `conda activate` normally
+  does, but calling `envs\coastsat\python.exe` directly by full path
+  bypasses that). Fix — prepend before running anything that touches GDAL:
+  ```powershell
+  $env:Path = "C:\Users\schif\Miniforge3\envs\coastsat\Library\bin;C:\Users\schif\Miniforge3\envs\coastsat;C:\Users\schif\Miniforge3\envs\coastsat\Scripts;" + $env:Path
+  ```
+- **Deliberately skipped**: `pyfes`, CoastSat's tidal-correction package.
+  See "Tidal correction" below — this is a real limitation of the first
+  pass, not an oversight.
+- Cloned the actual toolkit (not on PyPI/conda — used by cloning the repo
+  and importing its `coastsat` package directly) into `external/CoastSat/`:
+  ```
+  git clone https://github.com/kvos/CoastSat.git external/CoastSat
+  ```
+  `external/` is gitignored — treated as a vendored dependency, not project
+  code, and it's multi-hundred-MB with its own git history, both bad fits
+  for our repo. Re-clone any time; nothing local is customized in it.
+
+### Still needed before it runs (blocked on the user)
+
+CoastSat authenticates to Google Earth Engine as the user, not as this
+session, so these steps need to be done by the user directly, the same
+pattern as the earlier `gh auth login` step:
+
+1. Free GEE account at https://signup.earthengine.google.com/
+2. Install Google Cloud CLI, then `gcloud init` and `gcloud auth
+   application-default login` to link a (free, non-commercial-tier) Google
+   Cloud project.
+3. Note the project ID (`gcloud config get-value project`) — passed into
+   CoastSat's `SDS_download.authenticate_and_initialize(project_name)`.
+
+### Tidal correction: intentionally skipped for the first pass
+
+Where the shoreline appears to be on a given day is affected by the tide
+level at the moment the satellite passed over, independent of any real
+erosion/accretion — a satellite pass at high tide reads as a more landward
+shoreline than one at low tide, purely from the tide. CoastSat can correct
+for this using a global tide model (`pyfes`), but that package needs a
+~10GB-RAM FES2022 tidal-constituents file we chose not to pull in for a
+first pass.
+
+**Practical effect**: the raw (uncorrected) shoreline time series will have
+extra scatter from the tidal cycle layered on top of the real long-term
+trend. With enough satellite passes spread across different tide states
+over years, that noise should mostly average out of a *multi-year trend*
+direction — but any single date-to-date comparison, or a short time window,
+is not reliable evidence of erosion/accretion on its own. Add tidal
+correction (`pyfes` + FES2022 data) before trusting short-term or
+small-magnitude results.
+
+### Data locations
+
+- `external/CoastSat/` — the toolkit itself (gitignored, vendored)
+- `coastsat_data/` — downloaded satellite imagery and extracted-shoreline
+  outputs land here (gitignored — this is easily 100s of MB to GBs, and
+  fully reproducible by re-running the download, so not committed)
+
+### Not yet decided
+
+- Exact region-of-interest polygon and transects for Linda Mar Beach.
+- Whether to reuse a folium/leafmap-based interactive view (the original
+  Phase 3 idea, before this session's shoreline-change scope) as a later
+  way to explore the shoreline results, or keep it script/notebook-based.

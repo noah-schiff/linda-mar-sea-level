@@ -36,9 +36,11 @@ high tide to reach by 2050 and 2100.
 
 - **Phase 1 (done):** historical sea level trend from the SF tide gauge —
   measured at ~1.98 mm/yr, matching NOAA's published figure.
-- **Phase 2 (in progress):** elevation map of Linda Mar Beach + NOAA 2022
-  sea-level-rise scenarios (San Francisco, Intermediate scenario: +0.23 m
-  by 2050, +0.91 m by 2100, relative to year 2000).
-- **Phase 3 (planned):** interactive map/dashboard to explore scenarios.
+- **Phase 2 (done):** elevation map of Linda Mar Beach vs. NOAA 2022
+  Low/Intermediate/High sea-level-rise scenarios for 2050 and 2100.
+- **Phase 3 (in progress):** shoreline change at Linda Mar Beach using
+  [CoastSat](https://github.com/kvos/CoastSat) (satellite-derived
+  shoreline positions via Google Earth Engine). Needs a separate conda
+  environment (`coastsat`, Python 3.11) — see `CLAUDE.md` for setup.
 
 See `CLAUDE.md` for full project details.

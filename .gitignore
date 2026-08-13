@@ -3,3 +3,10 @@ __pycache__/
 *.pyc
 .DS_Store
 Thumbs.db
+
+# Phase 3 (CoastSat): vendored third-party repo, and downloaded satellite
+# imagery -- both can be multiple GB, well over GitHub's 100MB file limit,
+# and are both fully reproducible (re-clone / re-download) rather than
+# something to version control.
+external/
+coastsat_data/
