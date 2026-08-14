@@ -1,0 +1,241 @@
+/* Linda Mar Sea Level Explorer -- panel chrome over a full-bleed WebGL canvas.
+   Palette is the project's validated token set (scripts/validate_palette.py):
+   #2a78d6 water/signal, #eb6834 trend, plus the ink/muted greys. */
+
+:root {
+  --surface:        #fcfcfb;
+  --panel:          rgba(252, 252, 251, 0.92);
+  --panel-solid:    #fcfcfb;
+  --ink:            #0b0b0b;
+  --ink-2:          #52514e;
+  --muted:          #898781;
+  --grid:           #e1e0d9;
+  --hairline:       rgba(11, 11, 11, 0.10);
+  --water:          #2a78d6;
+  --trend:          #eb6834;
+  --raw:            #c3c2b7;
+  --scene-top:      #dfe6ec;
+  --scene-bottom:   #f3f1ea;
+  --shadow:         0 1px 2px rgba(11,11,11,.05), 0 6px 20px rgba(11,11,11,.07);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface:      #1a1a19;
+    --panel:        rgba(26, 26, 25, 0.90);
+    --panel-solid:  #1a1a19;
+    --ink:          #ffffff;
+    --ink-2:        #c3c2b7;
+    --muted:        #898781;
+    --grid:         #2c2c2a;
+    --hairline:     rgba(255, 255, 255, 0.12);
+    --water:        #3987e5;
+    --trend:        #d95926;
+    --raw:          #5a5954;
+    --scene-top:    #10171d;
+    --scene-bottom: #23231f;
+    --shadow:       0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.45);
+  }
+}
+
+:root[data-theme="dark"] {
+  --surface:      #1a1a19;
+  --panel:        rgba(26, 26, 25, 0.90);
+  --panel-solid:  #1a1a19;
+  --ink:          #ffffff;
+  --ink-2:        #c3c2b7;
+  --muted:        #898781;
+  --grid:         #2c2c2a;
+  --hairline:     rgba(255, 255, 255, 0.12);
+  --water:        #3987e5;
+  --trend:        #d95926;
+  --raw:          #5a5954;
+  --scene-top:    #10171d;
+  --scene-bottom: #23231f;
+  --shadow:       0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.45);
+}
+
+* { box-sizing: border-box; }
+
+/* An author `display` rule beats the UA stylesheet's [hidden]{display:none},
+   so .loading/.fatal would stay on screen forever without this. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app { position: relative; width: 100%; height: 100%; overflow: hidden; }
+
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* ---- panels ---- */
+.panel {
+  position: absolute;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  z-index: 2;
+}
+
+.panel-header { top: 16px; left: 16px; max-width: 430px; }
+.panel-chart  { bottom: 148px; left: 16px; width: 430px; }
+.panel-readout{ top: 16px; right: 16px; width: 258px; }
+.panel-controls {
+  bottom: 16px; left: 16px; right: 16px;
+  display: grid; grid-template-columns: 1fr 1fr 260px; gap: 20px; align-items: start;
+}
+.panel-footer {
+  bottom: 16px; right: 16px; max-width: 0; padding: 0; border: none;
+  background: none; box-shadow: none; overflow: hidden;
+}
+
+h1 {
+  margin: 0 0 2px; font-size: 19px; line-height: 1.22; letter-spacing: -0.01em;
+}
+h1 span { display: block; font-weight: 400; color: var(--ink-2); font-size: 15px; }
+
+.lede { margin: 8px 0 12px; font-size: 12.5px; line-height: 1.45; color: var(--ink-2); }
+
+/* ---- stat tiles ---- */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 0; }
+.stats div { margin: 0; }
+.stats dt { font-size: 10.5px; color: var(--ink-2); line-height: 1.3; }
+.stats dd {
+  margin: 3px 0 1px; font-size: 19px; font-weight: 600; color: var(--ink);
+  letter-spacing: -0.015em;
+}
+.stats .sub { font-size: 9.5px; color: var(--muted); line-height: 1.3; }
+
+/* ---- chart ---- */
+h2 { margin: 0 0 8px; font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.chart { width: 100%; height: 132px; }
+.chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.chart-legend {
+  margin: 6px 0 0; font-size: 10px; color: var(--ink-2);
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+}
+.key { width: 13px; height: 2.5px; border-radius: 2px; display: inline-block; }
+.key:not(:first-child) { margin-left: 9px; }
+.key-raw { background: var(--raw); }
+.key-roll { background: var(--water); }
+.key-trend { background: var(--trend); }
+
+/* ---- readout ---- */
+.readout-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 10px; padding: 3px 0;
+}
+.readout-label { font-size: 11px; color: var(--ink-2); }
+.readout-value {
+  font-size: 13.5px; font-weight: 600; color: var(--ink);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+.panel-readout hr { border: none; border-top: 1px solid var(--hairline); margin: 8px 0; }
+.readout-note { margin: 6px 0 0; font-size: 10px; color: var(--muted); line-height: 1.35; min-height: 1em; }
+
+/* ---- controls ---- */
+.control label {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  font-size: 12px; font-weight: 600; color: var(--ink); margin-bottom: 7px;
+}
+.control-hint { font-weight: 400; font-size: 10.5px; color: var(--muted); }
+
+input[type="range"] {
+  width: 100%; margin: 0; -webkit-appearance: none; appearance: none;
+  background: transparent; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 2px; background: var(--grid);
+}
+input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: 2px; background: var(--grid);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--water); border: 2px solid var(--panel-solid);
+  margin-top: -6px; box-shadow: 0 1px 3px rgba(11,11,11,.28);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--water); border: 2px solid var(--panel-solid);
+  box-shadow: 0 1px 3px rgba(11,11,11,.28);
+}
+input[type="range"]:focus-visible { outline: 2px solid var(--water); outline-offset: 4px; }
+
+.ticks {
+  display: flex; justify-content: space-between;
+  font-size: 9.5px; color: var(--muted); margin-top: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.year-row { display: flex; align-items: center; gap: 10px; }
+.btn {
+  flex: 0 0 auto; width: 27px; height: 27px; border-radius: 50%;
+  border: 1px solid var(--hairline); background: var(--panel-solid);
+  color: var(--ink); font-size: 11px; line-height: 1; cursor: pointer;
+  display: grid; place-items: center; padding: 0;
+}
+.btn:hover { border-color: var(--water); color: var(--water); }
+.btn:focus-visible { outline: 2px solid var(--water); outline-offset: 2px; }
+
+.toggles { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.chk { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--ink-2); font-weight: 400; }
+.chk input { accent-color: var(--water); margin: 0; }
+
+.panel-footer p { margin: 0; font-size: 10px; color: var(--muted); line-height: 1.4; }
+
+/* ---- loading / fatal ---- */
+.loading, .fatal {
+  position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
+  background: var(--surface); color: var(--ink-2); text-align: center;
+  transition: opacity .4s ease;
+}
+.loading.done { opacity: 0; pointer-events: none; }
+.loading-inner p { margin: 14px 0 0; font-size: 13px; }
+.spinner {
+  width: 26px; height: 26px; margin: 0 auto; border-radius: 50%;
+  border: 2.5px solid var(--grid); border-top-color: var(--water);
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+.fatal h2 { font-size: 17px; color: var(--ink); margin: 0 0 8px; }
+.fatal p { max-width: 34em; margin: 0 auto; font-size: 13px; line-height: 1.5; }
+.fatal > div { padding: 24px; }
+
+/* ---- responsive: stack panels into a scrolling column ---- */
+@media (max-width: 1180px) {
+  .panel-chart { display: none; }
+  .panel-controls { grid-template-columns: 1fr 1fr; }
+  .control-narrow { grid-column: 1 / -1; }
+}
+
+@media (max-width: 820px) {
+  html, body { height: auto; }
+  .app { height: auto; overflow: visible; display: flex; flex-direction: column; gap: 12px; padding: 12px; }
+  #scene { position: relative; height: 62vh; min-height: 340px; border-radius: 10px; }
+  .panel { position: relative; inset: auto; width: auto; max-width: none; }
+  .panel-header, .panel-readout, .panel-controls, .panel-chart {
+    top: auto; left: auto; right: auto; bottom: auto;
+  }
+  .panel-chart { display: block; }
+  .panel-controls { grid-template-columns: 1fr; gap: 18px; }
+  .panel-footer { max-width: none; padding: 0 4px 8px; overflow: visible; }
+  .stats { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 520px) {
+  .stats { grid-template-columns: 1fr; gap: 8px; }
+}

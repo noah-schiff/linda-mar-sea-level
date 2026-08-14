@@ -11,5 +11,10 @@ Thumbs.db
 external/
 coastsat_data/
 
+# Phase 4: the single-file bundles are ~4MB each and are pure duplication of
+# site/ -- regenerate with `python scripts/bundle_site.py`. site/ itself IS
+# committed, so GitHub Pages can serve it without running any build.
+dist/
+
 # Local assistant/session state, not project code.
 .claude/

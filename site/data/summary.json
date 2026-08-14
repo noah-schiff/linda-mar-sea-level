@@ -1,0 +1,171 @@
+{
+  "headline": [
+    {
+      "n": "1",
+      "label": "Sea level rise, 1897-present",
+      "value": "1.98 mm/yr",
+      "sub": "San Francisco tide gauge (PSMSL 10)"
+    },
+    {
+      "n": "2",
+      "label": "Shoreline change, 1984-2026",
+      "value": "+0.13 m/yr",
+      "sub": "CoastSat, 16 transects (p=0.001)"
+    },
+    {
+      "n": "3",
+      "label": "Projected sea level rise by 2100",
+      "value": "+0.91 m",
+      "sub": "NOAA 2022 Intermediate, vs. 2000 baseline"
+    }
+  ],
+  "mhhw_m": 1.798,
+  "level_int_2100_m": 2.709,
+  "level_high_2100_m": 3.756,
+  "water_steps": [
+    {
+      "level_m": 1.798,
+      "level_ft": 5.9,
+      "rise_m": 0.0,
+      "newly_flooded_ha": 0.0,
+      "label": "Today"
+    },
+    {
+      "level_m": 1.899,
+      "level_ft": 6.23,
+      "rise_m": 0.101,
+      "newly_flooded_ha": 0.4,
+      "label": "1.90"
+    },
+    {
+      "level_m": 2.0,
+      "level_ft": 6.56,
+      "rise_m": 0.202,
+      "newly_flooded_ha": 0.8,
+      "label": "2.00"
+    },
+    {
+      "level_m": 2.102,
+      "level_ft": 6.9,
+      "rise_m": 0.304,
+      "newly_flooded_ha": 1.1,
+      "label": "2.10"
+    },
+    {
+      "level_m": 2.203,
+      "level_ft": 7.23,
+      "rise_m": 0.405,
+      "newly_flooded_ha": 1.5,
+      "label": "2.20"
+    },
+    {
+      "level_m": 2.304,
+      "level_ft": 7.56,
+      "rise_m": 0.506,
+      "newly_flooded_ha": 1.8,
+      "label": "2.30"
+    },
+    {
+      "level_m": 2.405,
+      "level_ft": 7.89,
+      "rise_m": 0.607,
+      "newly_flooded_ha": 2.2,
+      "label": "2.40"
+    },
+    {
+      "level_m": 2.507,
+      "level_ft": 8.23,
+      "rise_m": 0.709,
+      "newly_flooded_ha": 2.7,
+      "label": "2.51"
+    },
+    {
+      "level_m": 2.608,
+      "level_ft": 8.56,
+      "rise_m": 0.81,
+      "newly_flooded_ha": 3.3,
+      "label": "2.61"
+    },
+    {
+      "level_m": 2.709,
+      "level_ft": 8.89,
+      "rise_m": 0.911,
+      "newly_flooded_ha": 3.8,
+      "label": "2100 Int"
+    },
+    {
+      "level_m": 2.814,
+      "level_ft": 9.23,
+      "rise_m": 1.016,
+      "newly_flooded_ha": 4.4,
+      "label": "2.81"
+    },
+    {
+      "level_m": 2.918,
+      "level_ft": 9.57,
+      "rise_m": 1.12,
+      "newly_flooded_ha": 5.3,
+      "label": "2.92"
+    },
+    {
+      "level_m": 3.023,
+      "level_ft": 9.92,
+      "rise_m": 1.225,
+      "newly_flooded_ha": 6.4,
+      "label": "3.02"
+    },
+    {
+      "level_m": 3.128,
+      "level_ft": 10.26,
+      "rise_m": 1.33,
+      "newly_flooded_ha": 7.6,
+      "label": "3.13"
+    },
+    {
+      "level_m": 3.232,
+      "level_ft": 10.6,
+      "rise_m": 1.434,
+      "newly_flooded_ha": 9.1,
+      "label": "3.23"
+    },
+    {
+      "level_m": 3.337,
+      "level_ft": 10.95,
+      "rise_m": 1.539,
+      "newly_flooded_ha": 10.6,
+      "label": "3.34"
+    },
+    {
+      "level_m": 3.442,
+      "level_ft": 11.29,
+      "rise_m": 1.644,
+      "newly_flooded_ha": 12.4,
+      "label": "3.44"
+    },
+    {
+      "level_m": 3.547,
+      "level_ft": 11.64,
+      "rise_m": 1.749,
+      "newly_flooded_ha": 14.4,
+      "label": "3.55"
+    },
+    {
+      "level_m": 3.651,
+      "level_ft": 11.98,
+      "rise_m": 1.853,
+      "newly_flooded_ha": 16.4,
+      "label": "3.65"
+    },
+    {
+      "level_m": 3.756,
+      "level_ft": 12.32,
+      "rise_m": 1.958,
+      "newly_flooded_ha": 18.4,
+      "label": "2100 High"
+    }
+  ],
+  "shoreline_trend_m_per_yr": 0.131,
+  "shoreline_trend_p": 0.0013,
+  "dem_max_m": 276.3,
+  "dem_resolution_m": 2.0
+}

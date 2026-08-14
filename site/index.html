@@ -1,0 +1,133 @@
+<!doctype html>
+<!-- No data-theme stamp: the page follows the OS/host theme by default, and the
+     CSS honours an explicit data-theme="light"/"dark" if a host sets one. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linda Mar Sea Level Explorer</title>
+<meta name="description" content="Interactive 3D terrain model of Linda Mar Beach, Pacifica, showing projected sea level rise and 1984-2026 shoreline change.">
+<link rel="stylesheet" href="./style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🌊</text></svg>">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+
+<div id="loading" class="loading">
+  <div class="loading-inner">
+    <div class="spinner" aria-hidden="true"></div>
+    <!-- "Starting…" is the pre-JS state: if it never changes, the module
+         itself failed to load, which is a different bug from a slow fetch. -->
+    <p id="loading-text">Starting…</p>
+  </div>
+</div>
+
+<div id="webgl-error" class="fatal" hidden>
+  <div>
+    <h2>This page needs WebGL</h2>
+    <p>Your browser or device could not create a WebGL context, so the 3D terrain
+       can’t be drawn. Try a desktop browser with hardware acceleration enabled.</p>
+  </div>
+</div>
+
+<main class="app">
+
+  <canvas id="scene" aria-label="Rotatable 3D terrain model of Linda Mar Beach"></canvas>
+
+  <!-- Title + headline numbers -->
+  <section class="panel panel-header" aria-labelledby="site-title">
+    <h1 id="site-title">Linda Mar Beach, Pacifica<span>Sea Level Explorer</span></h1>
+    <p class="lede">
+      Sea level at the gauge has risen steadily for a century and the beach has so far
+      held its ground — but projections still push the high-tide line well inland.
+    </p>
+    <dl class="stats" id="stats"></dl>
+  </section>
+
+  <!-- Phase 1 chart -->
+  <section class="panel panel-chart" aria-labelledby="chart-title">
+    <h2 id="chart-title">Sea level at San Francisco, 1854–present</h2>
+    <div id="chart" class="chart"></div>
+    <p class="chart-legend">
+      <span class="key key-raw"></span>Monthly mean
+      <span class="key key-roll"></span>12-month average
+      <span class="key key-trend"></span><span id="trend-label">Trend</span>
+    </p>
+  </section>
+
+  <!-- Live readout -->
+  <section class="panel panel-readout" aria-live="polite">
+    <div class="readout-row">
+      <span class="readout-label">Water level</span>
+      <span class="readout-value" id="ro-level">—</span>
+    </div>
+    <div class="readout-row">
+      <span class="readout-label">Rise vs. today</span>
+      <span class="readout-value" id="ro-rise">—</span>
+    </div>
+    <div class="readout-row">
+      <span class="readout-label">Land newly under water</span>
+      <span class="readout-value" id="ro-area">—</span>
+    </div>
+    <hr>
+    <div class="readout-row">
+      <span class="readout-label">Shoreline year</span>
+      <span class="readout-value" id="ro-year">—</span>
+    </div>
+    <div class="readout-row">
+      <span class="readout-label">Passes that year</span>
+      <span class="readout-value" id="ro-passes">—</span>
+    </div>
+    <p class="readout-note" id="ro-coverage"></p>
+  </section>
+
+  <!-- Controls -->
+  <section class="panel panel-controls" aria-label="Scene controls">
+    <div class="control">
+      <label for="water">Sea level
+        <span class="control-hint">today’s high tide → 2100</span>
+      </label>
+      <input type="range" id="water" min="0" max="19" step="1" value="0">
+      <div class="ticks" id="water-ticks"></div>
+    </div>
+
+    <div class="control">
+      <label for="year">Shoreline year
+        <span class="control-hint">1984–2026, satellite-derived</span>
+      </label>
+      <div class="year-row">
+        <button id="play" class="btn" aria-label="Play shoreline animation">▶</button>
+        <input type="range" id="year" min="0" max="42" step="1" value="42">
+      </div>
+      <div class="ticks" id="year-ticks"></div>
+    </div>
+
+    <div class="control control-narrow">
+      <label for="exag">Vertical exaggeration
+        <span class="control-hint" id="exag-label">6×</span>
+      </label>
+      <input type="range" id="exag" min="1" max="20" step="0.5" value="6">
+      <div class="toggles">
+        <label class="chk"><input type="checkbox" id="show-passes" checked> Show individual passes</label>
+        <label class="chk"><input type="checkbox" id="show-baseline" checked> Show 1984–89 baseline</label>
+      </div>
+    </div>
+  </section>
+
+  <footer class="panel panel-footer">
+    <p>
+      Terrain is <strong>present-day</strong> (USGS 3DEP, 2 m, NAVD88) and does not change
+      with the sliders — only water level and shoreline position do. Flood extent is a static
+      “bathtub” model: no storm surge, wave run-up, or drainage connectivity. Shoreline
+      positions are <strong>not tidally corrected</strong>. Scenarios: NOAA 2022 Interagency,
+      50th percentile, San Francisco (PSMSL 10).
+    </p>
+  </footer>
+
+</main>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

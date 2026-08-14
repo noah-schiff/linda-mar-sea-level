@@ -50,6 +50,10 @@ high tide to reach by 2050 and 2100.
   measured at ~1.98 mm/yr, matching NOAA's published figure.
 - **Phase 2 (done):** elevation map of Linda Mar Beach vs. NOAA 2022
   Low/Intermediate/High sea-level-rise scenarios for 2050 and 2100.
+- **Phase 4 (done):** interactive three.js site — a rotatable 3D model of the
+  present-day terrain with a sea-level slider (today's high tide → 2100) and a
+  1984–2026 shoreline animation, plus the Phase 1 chart and headline numbers as
+  panels. Lives in `site/`; see below.
 - **Phase 3 (done):** shoreline change at Linda Mar Beach using
   [CoastSat](https://github.com/kvos/CoastSat) (satellite-derived
   shoreline positions via Google Earth Engine). Needs a separate conda
@@ -58,5 +62,28 @@ high tide to reach by 2050 and 2100.
   measured along 16 shore-normal transects: alongshore-mean trend
   **+0.131 m/yr (p=0.001)** — the beach has been slightly advancing, not
   retreating (not tidally corrected; see `CLAUDE.md` for caveats).
+
+## Phase 4 — interactive site
+
+A rotatable 3D terrain model with a sea-level slider and a 1984–2026 shoreline
+animation. Terrain is present-day only and never changes; only the water level
+and the shoreline positions do.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_site.py    # regenerate site/data + vendor three.js
+.\.venv\Scripts\python.exe scripts\bundle_site.py   # optional: single-file bundles in dist/
+```
+
+`site/` is committed and fully static — serve it with any web server, or push it
+to GitHub Pages as-is:
+
+```powershell
+.\.venv\Scripts\python.exe -m http.server 8000 --directory site
+```
+
+`bundle_site.py` additionally produces `dist/linda-mar-explorer.html`, a single
+self-contained ~4 MB file (three.js and all data inlined, no network access) you
+can double-click or hand to someone directly. `dist/` is gitignored — it is
+regenerated from `site/`.
 
 See `CLAUDE.md` for full project details.

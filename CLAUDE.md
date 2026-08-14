@@ -525,6 +525,69 @@ consistent with Linda Mar being a sediment-fed pocket beach (San Pedro
 Creek outlet) rather than one of the more erosion-prone open stretches of
 Pacifica.
 
+## Phase 4 — Interactive three.js site (done)
+
+`site/` is a static, rotatable 3D model of the terrain with two time controls.
+**Terrain is present-day only and never changes** — only the water level and
+the shoreline positions do.
+
+- `scripts/build_site.py` → `site/data/*` (Int16 binaries + JSON) and vendors
+  three.js into `site/vendor/`. `scripts/bundle_site.py` → `dist/` single-file
+  bundles. `site/index.html`, `style.css`, `app.js` are hand-authored; only
+  `site/data/` and `site/vendor/` are generated, so no markup lives in Python
+  strings.
+- Payload: terrain 891×614 Int16 centimetres (1.09 MB, 1 cm precision, covers
+  the full −17.6…276.3 m range without clamping); shorelines 296k points
+  quantised to Int16 over their own bbox (1.18 MB, 5.5 cm precision).
+- Headline numbers come from `summary.json`, recomputed at build time from the
+  same sources as `plot_summary.py`, so the site can't drift from the phases.
+  Flood areas are computed from the **full-resolution** DEM, not the decimated
+  display grid.
+- The shoreline year slider draws that year's raw passes plus an annual line
+  rebuilt from the 16 transect medians — the same numbers behind +0.131 m/yr.
+  1989/1992/1999 cover only 11–15 of 16 transects; the line skips the missing
+  ones and the panel says so.
+
+### Why three.js rather than the Plotly prototype
+
+An earlier Plotly version (`scripts/build_interactive.py`, now deleted) hit a
+wall: Plotly can't recolour a 137k-point surface per slider step, so flooding
+had to be read off a translucent plane seen edge-on, and the 276 m hills forced
+an ugly terrain cap. In three.js the terrain material is patched via
+`onBeforeCompile` with a `uWaterLevel` uniform that tints submerged fragments,
+so flood extent reads from **any** camera angle and the terrain keeps its full
+height. Keeping both stacks wasn't worth it.
+
+### Gotchas worth not re-deriving
+
+- **`[hidden]` loses to an author `display` rule.** `.loading`/`.fatal` are
+  `display:grid`, which beats the UA stylesheet's `[hidden]{display:none}`, so
+  both overlays rendered on top of a perfectly working scene and it looked like
+  WebGL had failed. Fixed with an explicit `[hidden]{display:none!important}`.
+- **Vertical exaggeration has a narrow usable band.** 276 m over a 3.5 km scene
+  is a 0.08 ratio: flat at 1×, a sheer unreadable wall past ~4×. Default is
+  2.5×, with a slider so the viewer decides.
+- **The single-file bundle cannot use ES modules.** Two independent reasons,
+  both found the hard way: a strict CSP (the Artifact sandbox) refuses a
+  `data:`-URL importmap, so the app module never executed at all; and Chrome
+  blocks module loading over `file://` on CORS grounds, so double-clicking
+  would have failed too. `bundle_site.py` rewrites three.js's single trailing
+  `export{...}` into a `window.THREE` assignment and converts everything to
+  classic strict-mode IIFEs. `site/` itself still uses normal ES modules — it
+  is served over http, where they work fine.
+- **Inlined data must not be fetched as `data:` URIs either.** Fetching a
+  `data:` URL is governed by CSP `connect-src`, which strict hosts deny. The
+  bundle instead decodes base64 in-process and hands back a synthetic
+  `Response`, so the page makes zero network requests and `app.js` stays
+  byte-identical between the hosted site and the bundle.
+- **Diagnosing a blank artifact:** the loading overlay starts at "Starting…"
+  and only says "Loading terrain…" once `app.js` runs. If it's stuck on
+  "Starting…", the script never executed — a different bug from a slow fetch.
+  That distinction is what isolated the importmap failure.
+- Some shoreline points sit ~49 m west of the DEM's edge (open ocean), so the
+  terrain sampler clamps to bounds; without it those vertices come back NaN and
+  poison the buffer.
+
 ## Summary figure (all three phases)
 
 `scripts/plot_summary.py` (project `.venv`) combines all three phases into
